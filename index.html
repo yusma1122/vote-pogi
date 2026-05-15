@@ -1,0 +1,1425 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Voting Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --bg-deep: #070b12;
+            --bg-mid: #0d1420;
+            --bg-card: rgba(255, 255, 255, 0.04);
+            --bg-card-hover: rgba(255, 255, 255, 0.07);
+            --border: rgba(255, 255, 255, 0.07);
+            --border-glow: rgba(99, 179, 237, 0.25);
+            --text-primary: #f0f4ff;
+            --text-secondary: #8898b0;
+            --text-muted: #4a5568;
+            --accent-blue: #63b3ed;
+            --accent-cyan: #76e4f7;
+            --accent-gold: #f6c560;
+            --accent-green: #68d391;
+            --c1: #63b3ed;
+            --c2: #b794f4;
+            --c3: #fc8181;
+            --live-red: #f56565;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: var(--bg-deep);
+            color: var(--text-primary);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(99, 179, 237, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(99, 179, 237, 0.03) 1px, transparent 1px);
+            background-size: 48px 48px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(ellipse 80% 60% at 50% -10%, rgba(99, 179, 237, 0.06) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        #app {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* === HEADER === */
+        #header {
+            flex-shrink: 0;
+            padding: 10px 28px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border);
+            background: rgba(7, 11, 18, 0.85);
+            backdrop-filter: blur(12px);
+        }
+
+        .header-title {
+            font-size: 1.35rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            background: linear-gradient(135deg, #e8f0ff 0%, #63b3ed 60%, #76e4f7 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1.2;
+        }
+
+        .header-subtitle {
+            font-size: 0.68rem;
+            font-weight: 500;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            margin-top: 1px;
+        }
+
+        .header-center {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .stat-pill {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 5px 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .stat-pill-label {
+            font-size: 0.62rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .stat-pill-value {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            letter-spacing: -0.01em;
+        }
+
+        .live-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(245, 101, 101, 0.12);
+            border: 1px solid rgba(245, 101, 101, 0.25);
+            border-radius: 20px;
+            padding: 4px 10px;
+        }
+
+        .live-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--live-red);
+            animation: livePulse 1.4s ease-in-out infinite;
+        }
+
+        @keyframes livePulse {
+
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+
+            50% {
+                opacity: 0.4;
+                transform: scale(0.8);
+            }
+        }
+
+        .live-text {
+            font-size: 0.62rem;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--live-red);
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .clock-display {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            letter-spacing: 0.04em;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .btn-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--bg-card);
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            font-size: 0.85rem;
+        }
+
+        .btn-icon:hover {
+            background: var(--bg-card-hover);
+            color: var(--text-primary);
+            border-color: var(--border-glow);
+        }
+
+        /* === MAIN === */
+        #main {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0;
+            overflow: hidden;
+            min-height: 0;
+        }
+
+        /* === LEFT PANEL === */
+        #left-panel {
+            padding: 14px 14px 14px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            border-right: 1px solid var(--border);
+            overflow: hidden;
+        }
+
+        .section-label {
+            font-size: 0.6rem;
+            font-weight: 600;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        /* === KANDIDAT CARD === */
+        .kandidat-card {
+            flex: 1;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 12px 14px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            cursor: default;
+        }
+
+        .kandidat-card:hover {
+            background: var(--bg-card-hover);
+            transform: translateX(3px);
+        }
+
+        .kandidat-card.winner {
+            border-color: rgba(246, 197, 96, 0.3);
+            background: rgba(246, 197, 96, 0.04);
+        }
+
+        .kandidat-card.winner::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: linear-gradient(180deg, var(--accent-gold), rgba(246, 197, 96, 0.3));
+            border-radius: 3px 0 0 3px;
+        }
+
+        .kandidat-card .card-glow {
+            position: absolute;
+            inset: 0;
+            border-radius: 14px;
+            opacity: 0;
+            transition: opacity 0.4s;
+            pointer-events: none;
+        }
+
+        .kandidat-card.winner .card-glow {
+            background: radial-gradient(ellipse at left center, rgba(246, 197, 96, 0.06), transparent 70%);
+            opacity: 1;
+        }
+
+        /* Photo — LEBIH BESAR */
+        .kandidat-photo-wrap {
+            flex-shrink: 0;
+            position: relative;
+        }
+
+        .kandidat-photo {
+            width: 100px;
+            height: 120px;
+
+            border-radius: 20px;
+            overflow: hidden;
+
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+        }
+
+        .kandidat-photo img {
+            width: 100%;
+            height: 100%;
+
+            object-fit: cover;
+            display: block;
+        }
+
+        .crown-badge {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            font-size: 1rem;
+            line-height: 1;
+            filter: drop-shadow(0 2px 6px rgba(246, 197, 96, 0.6));
+        }
+
+        /* Info */
+        .kandidat-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .kandidat-name {
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            letter-spacing: -0.01em;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .kandidat-sub {
+            font-size: 0.62rem;
+            color: var(--text-muted);
+            font-weight: 400;
+            margin-top: 1px;
+        }
+
+        .progress-wrap {
+            margin-top: 8px;
+        }
+
+        .progress-bar-bg {
+            height: 5px;
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .progress-meta {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 4px;
+        }
+
+        .progress-pct {
+            font-size: 0.65rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        /* Vote count */
+        .vote-count-wrap {
+            text-align: right;
+            flex-shrink: 0;
+            min-width: 64px;
+        }
+
+        .vote-number {
+            font-size: 1.6rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            line-height: 1;
+            transition: color 0.3s;
+        }
+
+        .vote-label {
+            font-size: 0.58rem;
+            color: var(--text-muted);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-top: 2px;
+        }
+
+        @keyframes voteBurst {
+            0% {
+                transform: scale(1);
+            }
+
+            30% {
+                transform: scale(1.12);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        .vote-burst {
+            animation: voteBurst 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* === RIGHT PANEL === */
+        #right-panel {
+            padding: 14px 20px 14px 14px;
+            display: grid;
+            grid-template-rows: 1fr 1fr;
+            gap: 10px;
+            overflow: hidden;
+        }
+
+        .chart-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 12px 14px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            min-height: 0;
+        }
+
+        .chart-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            flex-shrink: 0;
+        }
+
+        .chart-card-title {
+            font-size: 0.68rem;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+        }
+
+        .chart-wrap {
+            flex: 1;
+            min-height: 0;
+            position: relative;
+            display: flex;
+            gap: 12px;
+        }
+
+        .chart-wrap canvas {
+            max-height: 100%;
+        }
+
+        .ranking-list {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+        }
+
+        .ranking-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 6px 8px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            transition: background 0.3s;
+        }
+
+        .rank-medal {
+            font-size: 1rem;
+            width: 22px;
+            text-align: center;
+        }
+
+        .rank-name {
+            flex: 1;
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .rank-bar-bg {
+            flex: 2;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .rank-bar-fill {
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .rank-pct {
+            font-size: 0.68rem;
+            font-weight: 700;
+            min-width: 38px;
+            text-align: right;
+        }
+
+        /* === FOOTER === */
+        #footer {
+            flex-shrink: 0;
+            padding: 8px 20px;
+            border-top: 1px solid var(--border);
+            background: rgba(7, 11, 18, 0.9);
+            backdrop-filter: blur(12px);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .footer-label {
+            font-size: 0.6rem;
+            font-weight: 600;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            flex-shrink: 0;
+            margin-right: 4px;
+        }
+
+        .admin-btn {
+            padding: 5px 14px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--bg-card);
+            color: var(--text-secondary);
+            font-size: 0.7rem;
+            font-weight: 600;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            cursor: pointer;
+            transition: all 0.2s;
+            letter-spacing: 0.02em;
+            white-space: nowrap;
+        }
+
+        .admin-btn:hover {
+            color: var(--text-primary);
+            background: var(--bg-card-hover);
+            border-color: var(--border-glow);
+        }
+
+        .admin-btn.c1:hover {
+            border-color: rgba(99, 179, 237, 0.4);
+            color: var(--c1);
+        }
+
+        .admin-btn.c2:hover {
+            border-color: rgba(183, 148, 244, 0.4);
+            color: var(--c2);
+        }
+
+        .admin-btn.c3:hover {
+            border-color: rgba(252, 129, 129, 0.4);
+            color: var(--c3);
+        }
+
+        .admin-btn.reset:hover {
+            border-color: rgba(104, 211, 145, 0.3);
+            color: var(--accent-green);
+        }
+
+        /* Tombol Kandidat Terpilih */
+        .btn-winner {
+            padding: 6px 18px;
+            border-radius: 10px;
+            border: 1px solid rgba(246, 197, 96, 0.4);
+            background: rgba(246, 197, 96, 0.08);
+            color: var(--accent-gold);
+            font-size: 0.72rem;
+            font-weight: 700;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            cursor: pointer;
+            transition: all 0.25s;
+            letter-spacing: 0.04em;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-winner:hover {
+            background: rgba(246, 197, 96, 0.15);
+            border-color: rgba(246, 197, 96, 0.7);
+            box-shadow: 0 0 20px rgba(246, 197, 96, 0.15);
+            transform: translateY(-1px);
+        }
+
+        .spacer {
+            flex: 1;
+        }
+
+        ::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* ==============================
+       RESULT OVERLAY
+    ============================== */
+        #result-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(4, 6, 10, 0.96);
+            backdrop-filter: blur(20px);
+        }
+
+        #result-overlay.active {
+            display: flex;
+        }
+
+        /* Particles / confetti background */
+        #result-overlay::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image:
+                radial-gradient(circle at 20% 30%, rgba(246, 197, 96, 0.08) 0%, transparent 40%),
+                radial-gradient(circle at 80% 70%, rgba(99, 179, 237, 0.06) 0%, transparent 40%),
+                radial-gradient(circle at 50% 50%, rgba(183, 148, 244, 0.05) 0%, transparent 60%);
+            pointer-events: none;
+        }
+
+        .result-card {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0;
+            animation: resultEntrance 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes resultEntrance {
+            from {
+                opacity: 0;
+                transform: scale(0.85) translateY(30px);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        /* Top label */
+        .result-org-label {
+            font-size: 0.65rem;
+            font-weight: 600;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 28px;
+        }
+
+        /* Crown big */
+        .result-crown {
+            font-size: 4rem;
+            line-height: 1;
+            margin-bottom: 12px;
+            animation: crownFloat 2.5s ease-in-out infinite;
+            filter: drop-shadow(0 4px 20px rgba(246, 197, 96, 0.5));
+        }
+
+        @keyframes crownFloat {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-8px);
+            }
+        }
+
+        /* Title */
+        .result-title {
+            font-size: 0.72rem;
+            font-weight: 600;
+            letter-spacing: 0.25em;
+            text-transform: uppercase;
+            color: var(--accent-gold);
+            margin-bottom: 20px;
+            opacity: 0.8;
+        }
+
+        /* Photo big */
+        .result-photo-ring {
+            position: relative;
+            margin-bottom: 24px;
+        }
+
+        .result-photo-ring::before {
+            content: '';
+            position: absolute;
+            inset: -6px;
+            border-radius: 26px;
+            background: conic-gradient(from 0deg, #f6c560, #76e4f7, #b794f4, #f6c560);
+            animation: ringRotate 3s linear infinite;
+            z-index: 0;
+        }
+
+        @keyframes ringRotate {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .result-photo-ring::after {
+            content: '';
+            position: absolute;
+            inset: -3px;
+            border-radius: 23px;
+            background: #0f542d;
+            z-index: 1;
+        }
+
+        .result-photo {
+            position: relative;
+            z-index: 2;
+            width: 160px;
+            height: 160px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 4.5rem;
+            font-weight: 800;
+            color: #fff;
+            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .result-winner-name {
+            font-size: 2rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            color: var(--text-primary);
+            line-height: 1.1;
+            margin-bottom: 6px;
+        }
+
+        .result-winner-sub {
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            font-weight: 400;
+            margin-bottom: 28px;
+        }
+
+        /* Stats row */
+        .result-stats {
+            display: flex;
+            gap: 24px;
+            margin-bottom: 36px;
+        }
+
+        .result-stat {
+            text-align: center;
+            padding: 14px 22px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.07);
+            border-radius: 14px;
+            min-width: 90px;
+        }
+
+        .result-stat-value {
+            font-size: 1.8rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            color: var(--accent-gold);
+            line-height: 1;
+        }
+
+        .result-stat-label {
+            font-size: 0.6rem;
+            color: var(--text-muted);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-top: 4px;
+        }
+
+        /* Runners-up row */
+        .result-runners {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 36px;
+        }
+
+        .result-runner {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 14px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 10px;
+        }
+
+        .result-runner-photo {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .result-runner-info {
+            text-align: left;
+        }
+
+        .result-runner-name {
+            font-size: 0.68rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .result-runner-pct {
+            font-size: 0.6rem;
+            color: var(--text-muted);
+            margin-top: 1px;
+        }
+
+        /* Close button */
+        .btn-close-result {
+            padding: 10px 28px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-secondary);
+            font-size: 0.72rem;
+            font-weight: 600;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            cursor: pointer;
+            transition: all 0.2s;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+        }
+
+        .btn-close-result:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text-primary);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Confetti dots */
+        .confetti-field {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            overflow: hidden;
+        }
+
+        .confetti-dot {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            animation: confettiFall linear infinite;
+        }
+
+        @keyframes confettiFall {
+            0% {
+                transform: translateY(-20px) rotate(0deg);
+                opacity: 1;
+            }
+
+            100% {
+                transform: translateY(110vh) rotate(720deg);
+                opacity: 0;
+            }
+        }
+
+        /* Divider line */
+        .result-divider {
+            width: 60px;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent-gold), transparent);
+            margin: 0 auto 28px;
+            border-radius: 2px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app">
+
+        <!-- HEADER -->
+        <header id="header">
+            <div class="header-brand" style="display:flex;align-items:center;gap:12px;">
+                <img src="foto/pogi.png" alt="Logo POGI" style="height:40px;width:auto;opacity:0.9;"
+                    onerror="this.style.display='none'">
+                <div style="width:1px;height:34px;background:rgba(255,255,255,0.2);flex-shrink:0;"></div>
+                <div>
+                    <div class="header-title">PEMILIHAN KETUA POGI 2026</div>
+                    <div class="header-subtitle">Live Voting Dashboard</div>
+                </div>
+            </div>
+
+            <div class="header-center">
+                <div class="live-badge">
+                    <div class="live-dot"></div>
+                    <span class="live-text">Live</span>
+                </div>
+                <div class="stat-pill">
+                    <span class="stat-pill-label">Total Suara</span>
+                    <span class="stat-pill-value counting" id="total-votes">0</span>
+                </div>
+            </div>
+
+            <div class="header-right">
+                <div class="clock-display" id="clock">00:00:00</div>
+                <button class="btn-icon" onclick="toggleFullscreen()" title="Fullscreen">⛶</button>
+            </div>
+        </header>
+
+        <!-- MAIN -->
+        <main id="main">
+
+            <!-- LEFT: Kandidat Cards -->
+            <div id="left-panel">
+                <div class="section-label">Kandidat</div>
+
+                <div class="kandidat-card" id="card-0">
+                    <div class="card-glow"></div>
+                    <div class="kandidat-photo-wrap">
+                        <div class="kandidat-photo" id="photo-0">
+                            <img src="foto/1.png" alt="Kandidat">
+                        </div>
+
+                        <div class="crown-badge" id="crown-0" style="display:none">
+                            👑
+                        </div>
+                    </div>
+                    <div class="kandidat-info">
+                        <div class="kandidat-name">dr. Iwan Darma Putra, Sp.O.G, F.E.R.</div>
+                        <div class="kandidat-sub">Kandidat 1</div>
+                        <div class="progress-wrap">
+                            <div class="progress-bar-bg">
+                                <div class="progress-bar-fill" id="bar-0"
+                                    style="background: linear-gradient(90deg,#4299e1,#63b3ed); width:0%"></div>
+                            </div>
+                            <div class="progress-meta">
+                                <span class="progress-pct" id="pct-0">0%</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="vote-count-wrap">
+                        <div class="vote-number counting" id="vote-0" style="color:var(--c1)">0</div>
+                        <div class="vote-label">suara</div>
+                    </div>
+                </div>
+
+                <div class="kandidat-card" id="card-1">
+                    <div class="card-glow"></div>
+                    <div class="kandidat-photo-wrap">
+                        <div class="kandidat-photo" id="photo-0">
+                            <img src="foto/2.png" alt="Kandidat">
+                        </div>
+                        <div class="crown-badge" id="crown-1" style="display:none">👑</div>
+                    </div>
+                    <div class="kandidat-info">
+                        <div class="kandidat-name">dr. Athjo Adhmart, Sp.O.G, Obginsos. </div>
+                        <div class="kandidat-sub">Kandidat 2</div>
+                        <div class="progress-wrap">
+                            <div class="progress-bar-bg">
+                                <div class="progress-bar-fill" id="bar-1"
+                                    style="background: linear-gradient(90deg,#805ad5,#b794f4); width:0%"></div>
+                            </div>
+                            <div class="progress-meta">
+                                <span class="progress-pct" id="pct-1">0%</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="vote-count-wrap">
+                        <div class="vote-number counting" id="vote-1" style="color:var(--c2)">0</div>
+                        <div class="vote-label">suara</div>
+                    </div>
+                </div>
+
+                <div class="kandidat-card" id="card-2">
+                    <div class="card-glow"></div>
+                    <div class="kandidat-photo-wrap">
+                        <div class="kandidat-photo" id="photo-0">
+                            <img src="foto/3.png" alt="Kandidat">
+                        </div>
+                        <div class="crown-badge" id="crown-2" style="display:none">👑</div>
+                    </div>
+                    <div class="kandidat-info">
+                        <div class="kandidat-name">Dr. dr. Hardyan Sauqi, Sp.O.G, F.E.R.</div>
+                        <div class="kandidat-sub">Kandidat 3</div>
+                        <div class="progress-wrap">
+                            <div class="progress-bar-bg">
+                                <div class="progress-bar-fill" id="bar-2"
+                                    style="background: linear-gradient(90deg,#e53e3e,#fc8181); width:0%"></div>
+                            </div>
+                            <div class="progress-meta">
+                                <span class="progress-pct" id="pct-2">0%</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="vote-count-wrap">
+                        <div class="vote-number counting" id="vote-2" style="color:var(--c3)">0</div>
+                        <div class="vote-label">suara</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT: Charts + Ranking -->
+            <div id="right-panel">
+                <div class="chart-card">
+                    <div class="chart-card-header">
+                        <span class="chart-card-title">Distribusi Suara</span>
+                    </div>
+                    <div class="chart-wrap">
+                        <div style="flex:2; position:relative; min-height:0">
+                            <canvas id="barChart"></canvas>
+                        </div>
+                        <div
+                            style="flex:1; position:relative; min-height:0; display:flex; align-items:center; justify-content:center">
+                            <canvas id="doughnutChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chart-card">
+                    <div class="chart-card-header">
+                        <span class="chart-card-title">Peringkat Realtime</span>
+                    </div>
+                    <div class="ranking-list" id="ranking-list"></div>
+                </div>
+            </div>
+        </main>
+
+        <!-- FOOTER -->
+        <footer id="footer">
+            <span class="footer-label">vote</span>
+            <button class="admin-btn c1" onclick="addVote(0)">+ Suara A</button>
+            <button class="admin-btn c2" onclick="addVote(1)">+ Suara B</button>
+            <button class="admin-btn c3" onclick="addVote(2)">+ Suara C</button>
+            <button class="admin-btn reset" onclick="resetVoting()">↺ Reset</button>
+
+            <div class="spacer"></div>
+
+            <!-- TOMBOL KANDIDAT TERPILIH -->
+            <button class="btn-winner" onclick="showResult()">
+                <span>👑</span>
+                <span>Kandidat Terpilih</span>
+            </button>
+
+            <div style="width:1px;height:20px;background:rgba(255,255,255,0.1);flex-shrink:0;"></div>
+            <span style="font-size:0.6rem;color:var(--text-muted);font-weight:500">Live Voting System • Developed by
+                Yusma • 2026</span>
+        </footer>
+
+    </div>
+
+    <!-- ====== RESULT OVERLAY ====== -->
+    <div id="result-overlay">
+        <!-- Confetti -->
+        <div class="confetti-field" id="confetti-field"></div>
+
+        <div class="result-card">
+            <div class="result-org-label">POGI — Pemilihan Ketua 2026</div>
+
+            <div class="result-crown">👑</div>
+            <div class="result-title">Kandidat Terpilih</div>
+
+            <div class="result-photo-ring">
+                <div class="result-photo" id="result-photo">w</div>
+            </div>
+
+            <div class="result-winner-name" id="result-name">dr. Iwan Darma Putra, Sp.O.G, F.E.R.</div>
+            <div class="result-winner-sub" id="result-sub">Kandidat 1</div>
+
+            <div class="result-divider"></div>
+
+            <div class="result-stats">
+                <div class="result-stat">
+                    <div class="result-stat-value" id="result-votes">0</div>
+                    <div class="result-stat-label">Suara</div>
+                </div>
+                <div class="result-stat">
+                    <div class="result-stat-value" id="result-pct">0%</div>
+                    <div class="result-stat-label">Persentase</div>
+                </div>
+                <div class="result-stat">
+                    <div class="result-stat-value" id="result-total">0</div>
+                    <div class="result-stat-label">Total Suara</div>
+                </div>
+            </div>
+
+            <!-- Runners up -->
+            <div class="result-runners" id="result-runners"></div>
+
+            <button class="btn-close-result" onclick="closeResult()">✕ &nbsp; Tutup</button>
+        </div>
+    </div>
+
+    <script>
+        // ============================
+        // STATE
+        // ============================
+        const candidates = [
+            { name: 'dr. Iwan Darma Putra, Sp.O.G, F.E.R.', label: 'A', sub: 'Kandidat A', color: '#63b3ed', bg: 'linear-gradient(135deg,#2b6cb0,#63b3ed)', votes: 0, photo: 'foto/1.png' },
+            { name: 'dr. Athjo Adhmart, Sp.O.G, Obginsos.', label: 'B', sub: 'Kandidat B', color: '#b794f4', bg: 'linear-gradient(135deg,#553c9a,#b794f4)', votes: 0, photo: 'foto/2.png' },
+            { name: 'Dr. dr. Hardyan Sauqi, Sp.O.G, F.E.R.', label: 'C', sub: 'Kandidat C', color: '#fc8181', bg: 'linear-gradient(135deg,#9b2c2c,#fc8181)', votes: 0, photo: 'foto/3.png' },
+        ];
+
+        candidates[0].votes = 142;
+        candidates[1].votes = 98;
+        candidates[2].votes = 73;
+
+        // ============================
+        // CLOCK
+        // ============================
+        function updateClock() {
+            const now = new Date();
+            const pad = n => String(n).padStart(2, '0');
+            document.getElementById('clock').textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // ============================
+        // ANIMATE NUMBER
+        // ============================
+        const displayedVotes = [0, 0, 0];
+
+        function animateTo(el, from, to, duration = 600) {
+            const start = performance.now();
+            function step(now) {
+                const t = Math.min((now - start) / duration, 1);
+                const ease = 1 - Math.pow(1 - t, 3);
+                el.textContent = Math.round(from + (to - from) * ease);
+                if (t < 1) requestAnimationFrame(step);
+                else el.textContent = to;
+            }
+            requestAnimationFrame(step);
+        }
+
+        // ============================
+        // CHARTS
+        // ============================
+        let barChart, doughnutChart;
+
+        function initCharts() {
+            Chart.defaults.font.family = "'Plus Jakarta Sans', sans-serif";
+            Chart.defaults.color = '#8898b0';
+
+            const barCtx = document.getElementById('barChart').getContext('2d');
+            barChart = new Chart(barCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Kandidat A', 'Kandidat B', 'Kandidat C'],
+                    datasets: [{
+                        data: candidates.map(c => c.votes),
+                        backgroundColor: candidates.map(c => c.color + '44'),
+                        borderColor: candidates.map(c => c.color),
+                        borderWidth: 1.5,
+                        borderRadius: 6,
+                        borderSkipped: false,
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    animation: { duration: 700, easing: 'easeInOutQuart' },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#0d1420', borderColor: 'rgba(255,255,255,0.08)', borderWidth: 1,
+                            titleColor: '#f0f4ff', bodyColor: '#8898b0', padding: 10, cornerRadius: 8,
+                            callbacks: { label: ctx => ` ${ctx.parsed.y} suara` }
+                        }
+                    },
+                    scales: {
+                        x: { grid: { color: 'rgba(255,255,255,0.03)', drawBorder: false }, ticks: { font: { size: 10, weight: '600' }, color: '#4a5568' } },
+                        y: { grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false }, ticks: { font: { size: 10 }, color: '#4a5568', stepSize: 50 }, beginAtZero: true }
+                    }
+                }
+            });
+
+            const dCtx = document.getElementById('doughnutChart').getContext('2d');
+            doughnutChart = new Chart(dCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['A', 'B', 'C'],
+                    datasets: [{
+                        data: candidates.map(c => c.votes || 1),
+                        backgroundColor: candidates.map(c => c.color + '55'),
+                        borderColor: candidates.map(c => c.color),
+                        borderWidth: 1.5, hoverBorderWidth: 2,
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false, cutout: '68%',
+                    animation: { duration: 700, easing: 'easeInOutQuart' },
+                    plugins: {
+                        legend: { position: 'bottom', labels: { font: { size: 9, weight: '600' }, padding: 8, boxWidth: 10, boxHeight: 10, color: '#8898b0' } },
+                        tooltip: {
+                            backgroundColor: '#0d1420', borderColor: 'rgba(255,255,255,0.08)', borderWidth: 1,
+                            titleColor: '#f0f4ff', bodyColor: '#8898b0', padding: 8, cornerRadius: 8,
+                            callbacks: { label: ctx => ` ${ctx.raw} suara` }
+                        }
+                    }
+                }
+            });
+        }
+
+        // ============================
+        // UPDATE UI
+        // ============================
+        function totalVotes() { return candidates.reduce((s, c) => s + c.votes, 0); }
+
+        function updateUI() {
+            const total = totalVotes();
+            animateTo(document.getElementById('total-votes'), parseInt(document.getElementById('total-votes').textContent) || 0, total);
+
+            const sorted = [...candidates].map((c, i) => ({ ...c, idx: i })).sort((a, b) => b.votes - a.votes);
+            const winnerId = sorted[0].idx;
+
+            candidates.forEach((c, i) => {
+                const pct = total > 0 ? Math.round((c.votes / total) * 100) : 0;
+
+                const el = document.getElementById(`vote-${i}`);
+                animateTo(el, displayedVotes[i], c.votes);
+                displayedVotes[i] = c.votes;
+
+                document.getElementById(`bar-${i}`).style.width = pct + '%';
+                document.getElementById(`pct-${i}`).textContent = pct + '%';
+
+                const card = document.getElementById(`card-${i}`);
+                const crown = document.getElementById(`crown-${i}`);
+                if (i === winnerId && total > 0) { card.classList.add('winner'); crown.style.display = 'block'; }
+                else { card.classList.remove('winner'); crown.style.display = 'none'; }
+            });
+
+            barChart.data.datasets[0].data = candidates.map(c => c.votes);
+            barChart.update('active');
+            doughnutChart.data.datasets[0].data = candidates.map(c => c.votes || 0.001);
+            doughnutChart.update('active');
+
+            renderRanking(sorted, total);
+        }
+
+        // ============================
+        // RANKING
+        // ============================
+        const medals = ['🥇', '🥈', '🥉'];
+        const rankColors = ['#f6c560', '#a0aec0', '#c37f4e'];
+
+        function renderRanking(sorted, total) {
+            const list = document.getElementById('ranking-list');
+            list.innerHTML = sorted.map((c, rank) => {
+                const pct = total > 0 ? Math.round((c.votes / total) * 100) : 0;
+                return `
+          <div class="ranking-item">
+            <span class="rank-medal">${medals[rank]}</span>
+            <span class="rank-name">${c.name.split(' ').slice(0, 10).join(' ')}</span>
+            <div class="rank-bar-bg">
+              <div class="rank-bar-fill" style="width:${pct}%; background:${c.color}66"></div>
+            </div>
+            <span class="rank-pct" style="color:${rankColors[rank]}">${pct}%</span>
+          </div>
+        `;
+            }).join('');
+        }
+
+        // ============================
+        // ADMIN ACTIONS
+        // ============================
+        function addVote(idx) {
+            candidates[idx].votes++;
+            const el = document.getElementById(`vote-${idx}`);
+            el.classList.remove('vote-burst');
+            void el.offsetWidth;
+            el.classList.add('vote-burst');
+            setTimeout(() => el.classList.remove('vote-burst'), 400);
+            updateUI();
+        }
+
+        function resetVoting() {
+            candidates.forEach(c => c.votes = 0);
+            displayedVotes.fill(0);
+            updateUI();
+        }
+
+        // ============================
+        // RESULT OVERLAY
+        // ============================
+        function showResult() {
+            const total = totalVotes();
+            const sorted = [...candidates].map((c, i) => ({ ...c, idx: i })).sort((a, b) => b.votes - a.votes);
+            const winner = sorted[0];
+            const runners = sorted.slice(1);
+
+            const pct = total > 0 ? Math.round((winner.votes / total) * 100) : 0;
+
+            // Fill winner info
+            const photo = document.getElementById('result-photo');
+            photo.innerHTML = `<img src="${winner.photo}" alt="${winner.name}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+            photo.style.background = 'transparent';
+
+            document.getElementById('result-name').textContent = winner.name;
+            document.getElementById('result-sub').textContent = winner.sub;
+            document.getElementById('result-votes').textContent = winner.votes.toLocaleString('id-ID');
+            document.getElementById('result-pct').textContent = pct + '%';
+            document.getElementById('result-total').textContent = total.toLocaleString('id-ID');
+
+            // Runners up
+            const rEl = document.getElementById('result-runners');
+            rEl.innerHTML = runners.map((r, i) => {
+                const rPct = total > 0 ? Math.round((r.votes / total) * 100) : 0;
+                return `
+          <div class="result-runner">
+            <div class="result-runner-photo" style="background:${r.bg};overflow:hidden;">
+              <img src="${r.photo}" alt="${r.name}" style="width:100%;height:100%;object-fit:cover;">
+            </div>
+            <div class="result-runner-info">
+              <div class="result-runner-name">${r.name.split(' ').slice(0, 10).join(' ')}</div>
+              <div class="result-runner-pct">${r.votes} suara &nbsp;•&nbsp; ${rPct}%</div>
+            </div>
+          </div>
+        `;
+            }).join('');
+
+            // Generate confetti
+            spawnConfetti();
+
+            // Show overlay
+            const overlay = document.getElementById('result-overlay');
+            overlay.classList.add('active');
+        }
+
+        function closeResult() {
+            document.getElementById('result-overlay').classList.remove('active');
+            document.getElementById('confetti-field').innerHTML = '';
+        }
+
+        // ============================
+        // CONFETTI
+        // ============================
+        function spawnConfetti() {
+            const field = document.getElementById('confetti-field');
+            field.innerHTML = '';
+            const colors = ['#f6c560', '#63b3ed', '#b794f4', '#fc8181', '#68d391', '#76e4f7'];
+            for (let i = 0; i < 60; i++) {
+                const dot = document.createElement('div');
+                dot.className = 'confetti-dot';
+                dot.style.left = Math.random() * 100 + '%';
+                dot.style.top = Math.random() * 100 + '%';
+                dot.style.background = colors[Math.floor(Math.random() * colors.length)];
+                dot.style.animationDuration = (3 + Math.random() * 5) + 's';
+                dot.style.animationDelay = (Math.random() * 3) + 's';
+                dot.style.width = dot.style.height = (4 + Math.random() * 6) + 'px';
+                dot.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+                field.appendChild(dot);
+            }
+        }
+
+        // ============================
+        // FULLSCREEN
+        // ============================
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => { });
+            else document.exitFullscreen().catch(() => { });
+        }
+
+        // Close overlay on background click
+        document.getElementById('result-overlay').addEventListener('click', function (e) {
+            if (e.target === this) closeResult();
+        });
+
+        // ============================
+        // INIT
+        // ============================
+        document.addEventListener('DOMContentLoaded', () => {
+            initCharts();
+            updateUI();
+        });
+    </script>
+</body>
+
+</html
